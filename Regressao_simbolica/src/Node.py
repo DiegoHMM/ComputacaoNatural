@@ -3,7 +3,7 @@ import math
 import sys
 
 TERMINALS = ["X1", "X2", "const"]
-OPERATORS = ["+", "-", "*","exp", "cos", "sin"]
+OPERATORS = ["+", "-", "*", "cos", "sin"]
 types = ["terminal", "operator"]
 
 class Node:
@@ -166,13 +166,21 @@ class Node:
 
         return None
             
-    def count_nodes(self):
-        count = 1
-        if self.left is not None:
-            count += self.left.count_nodes()
-        if self.right is not None:
-            count += self.right.count_nodes()
+    def count_nodes(self, count=0):
+        if self.type == "terminal":
+            count += 1
+        elif self.type == "operator":
+            if self.value in ["sin", "cos", "exp", "ln"]:
+                count = self.left.count_nodes(count)
+            else:
+                count = self.left.count_nodes(count)
+                count = self.right.count_nodes(count)
+            count += 1
         return count
+
+
+
+
     
     def get_depth(self):
         depth = 0
@@ -237,6 +245,7 @@ class Node:
                     tree = Node("operator", value, Node.full(max_depth - 1, terminal_prob, min_size))
                 if tree.count_nodes() >= min_size:
                     return tree
+
 def print_tree(node):
     if node.type == "terminal":
         if node.value == "const":

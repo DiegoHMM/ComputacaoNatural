@@ -23,19 +23,32 @@ def calculate_fitness(individual,X, y):
 
 def root_mean_squared_error(y_true, y_pred):
     return np.sqrt(np.mean((y_true - y_pred) ** 2))
+def trees_are_different(tree1, tree2):
+    if tree1.type != tree2.type or tree1.value != tree2.value:
+        return True
 
+    if tree1.type == "terminal":
+        return tree1.const_value != tree2.const_value if tree1.value == "const" else False
+
+    if tree1.type == "operator":
+        if trees_are_different(tree1.left, tree2.left):
+            return True
+        if tree1.right and tree2.right and trees_are_different(tree1.right, tree2.right):
+            return True
+
+    return False
 
 def mutate(tree):
     max_depth = 7
     total_nodes = tree.count_nodes()
-    random_index = random.randint(0, total_nodes - 1)
-    new_subtree = create_random_tree(max_depth - tree.node_depth())
-    if new_subtree is not None:
-        new_tree = tree.copy()
-        new_tree.replace_subtree(random_index, new_subtree)
-        if new_tree.node_depth() <= max_depth:
-            return new_tree
-    return mutate(tree)
+    while(True):
+        random_index = random.randint(1, total_nodes)
+        new_subtree = create_random_tree(max_depth - tree.node_depth())
+        if new_subtree is not None:
+            new_tree = tree.copy()
+            new_tree.replace_subtree(random_index, new_subtree)
+            if new_tree.node_depth() <= max_depth:
+                return new_tree
 
 def get_nodes_at_depth(node, depth, current_depth=0):
     if current_depth == depth:
@@ -261,7 +274,7 @@ def create_initial_population(pop_size, max_depth, terminal_prob=0.5):
         population.append(individual)
     return population
 
-def create_random_tree(max_depth=7, terminal_prob=0.5):
+def create_random_tree(max_depth=7, terminal_prob=0.3):
     if max_depth == 0 or random.random() < terminal_prob:
         return Node("terminal", random.choice(TERMINALS))
     else:
