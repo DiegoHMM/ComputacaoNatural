@@ -14,10 +14,10 @@ def run_exp(parameters, train_path, test_path, n_runs, seeds):
     all_stats = []
     best_test = 999999
     #Read data
-    print(test_path)
     X_train, y_train = get_data(train_path)
     X_test, y_test = get_data(test_path)
     for i in range(n_runs):
+        print("Run: ", i)
         #define random seed
         random.seed(seeds[i])
         #Create population

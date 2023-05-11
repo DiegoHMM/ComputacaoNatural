@@ -2,42 +2,41 @@ import random
 import math
 import sys
 
-TERMINALS = ["X1", "X2", "const"]
-OPERATORS = ["+", "-", "*", "cos", "sin"]
+TERMINALS = ["X1", "X2"]#,"X3","X4","X5","X6","X7","X8"]
+OPERATORS = ["+", "-", "*", "cos" , "sin"]
 types = ["terminal", "operator"]
 
 class Node:
-    def __init__(self, type_, value, left=None, right=None, const_value=1):
+    def __init__(self, type_, value, left=None, right=None, const_value=1, terminals=TERMINALS):
         self.type = type_
         self.value = value
         self.left = left
         self.right = right
         self.const_value = const_value
+        self.terminals = terminals + ["const"]
 
-    def evaluate(self, x1, x2):
+    def evaluate(self, *args):
         if self.type == "terminal":
-            if self.value == "X1":
-                return x1
-            elif self.value == "X2":
-                return x2
-            elif self.value == "const":
+            if self.value == "const":
                 return self.const_value
+            else:
+                return args[self.terminals.index(self.value)]
         elif self.type == "operator":
             if self.value == "+":
-                return self.left.evaluate(x1, x2) + self.right.evaluate(x1, x2)
+                return self.left.evaluate(*args) + self.right.evaluate(*args)
             elif self.value == "-":
-                return self.left.evaluate(x1, x2) - self.right.evaluate(x1, x2)
+                return self.left.evaluate(*args) - self.right.evaluate(*args)
             elif self.value == "*":
-                return self.left.evaluate(x1, x2) * self.right.evaluate(x1, x2)
+                return self.left.evaluate(*args) * self.right.evaluate(*args)
             elif self.value == "/":
-                right_val = self.right.evaluate(x1, x2)
-                return self.left.evaluate(x1, x2) / right_val if right_val != 0 else 0
+                right_val = self.right.evaluate(*args)
+                return self.left.evaluate(*args) / right_val if right_val != 0 else 0
             elif self.value == "sin":
-                return math.sin(self.left.evaluate(x1, x2))
+                return math.sin(self.left.evaluate(*args))
             elif self.value == "cos":
-                return math.cos(self.left.evaluate(x1, x2))
+                return math.cos(self.left.evaluate(*args))
             elif self.value == "exp":
-                exp_val = self.left.evaluate(x1, x2)
+                exp_val = self.left.evaluate(*args)
                 # Limit the value passed to exp function
                 exp_val = max(min(exp_val, 30), -30)
                 try:
@@ -45,7 +44,7 @@ class Node:
                 except OverflowError:
                     return sys.float_info.max if exp_val > 0 else sys.float_info.min
             elif self.value == "ln":
-                ln_val = self.left.evaluate(x1, x2)
+                ln_val = self.left.evaluate(*args)
                 ln_val = abs(ln_val)  # Ensure the value is positive
                 # Limit the value passed to ln function
                 ln_val = max(min(ln_val, sys.float_info.max), sys.float_info.min)

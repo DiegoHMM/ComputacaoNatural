@@ -42,7 +42,7 @@ def mutate(tree):
     max_depth = 7
     total_nodes = tree.count_nodes()
     while(True):
-        random_index = random.randint(1, total_nodes)
+        random_index = random.randint(1, total_nodes-1)
         new_subtree = create_random_tree(max_depth - tree.node_depth())
         if new_subtree is not None:
             new_tree = tree.copy()
@@ -63,7 +63,11 @@ def get_nodes_at_depth(node, depth, current_depth=0):
 
 
 def crossover(parent1, parent2, max_depth=7):
-    while True:
+    attempts = 0
+    max_attempts = 100
+    while attempts < max_attempts:
+        attempts += 1
+
         parent1_node_count = parent1.count_nodes()
         parent2_node_count = parent2.count_nodes()
 
@@ -87,8 +91,10 @@ def crossover(parent1, parent2, max_depth=7):
 
         if offspring1_depth > max_depth or offspring2_depth > max_depth:
             continue
-
+        
         return offspring1, offspring2
+
+    return parent1, parent2
 
 def crossover_elite(parent1, parent2, X, y, max_depth=7):
     parent1_fitness = calculate_fitness(parent1, X, y)
@@ -193,7 +199,7 @@ def evolve(selection_type, population, train_cases, train_labels, fitnesses, gen
             elif selection_type == 'roulette':
                 parent1 = roulette_selection(population, fitnesses)
                 parent2 = roulette_selection(population, fitnesses)
-            elif selection_type == 'epsilon_lexicase':
+            else: #Lexicase
                 pop_size = len(population)
                 n_cases = len(train_cases)
                 predictions = np.array([[individual.evaluate(*x) for x in train_cases] for individual in population])
