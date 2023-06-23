@@ -13,15 +13,16 @@ BLOCK_SIZE = 20
 
 
 class Individual():
-    def __init__(self, input_size, output_size, hidden_layers_range, hidden_size_range):
+    def __init__(self, input_size, output_size, hidden_layers_range, hidden_size_range, name):
         self.input_size = input_size
         self.output_size = output_size
-        self.hidden_layers_range = hidden_layers_range
-        self.hidden_size_range = hidden_size_range
+        self.hidden_layers_range = random.randint(*hidden_layers_range)
+        self.hidden_size_range = random.randint(*hidden_size_range)
         self.fitness = 0
         self.model = RandomLinearQNet(self.input_size, self.output_size, self.hidden_layers_range, self.hidden_size_range)
         self.game = SnakeGameAI()
         #
+        self.name = name
         self.n_games = 0
         self.epsilon = 0
         self.gamma = 0.9  # discount rate
@@ -33,8 +34,7 @@ class Individual():
         plot_mean_scores = []
         total_score = 0
         record = 0
-        for i in range(100): #run for 100 games
-            print("Game: ", i)
+        while self.n_games < 100: #run for 100 games
             state_old = self.get_state(self.game)
             final_move = self.get_action(state_old)
             reward, done, score = self.game.play_step(final_move)
@@ -51,17 +51,42 @@ class Individual():
 
                 if score > record:
                     record = score
-                    self.agent.model.save()
+                    self.save_indv(self.name)
+
+    #load model
+    def load_indv(self,file_name):
+        path = "./model/" + file_name + ".pth"
+        # Load the checkpoint
+        model_dict = torch.load(path)
+        print(model_dict)
+        self.model = RandomLinearQNet(model_dict['input_size'], model_dict['output_size'], model_dict['hidden_layers'], model_dict['hidden_size'])
+        self.model.load_state_dict(model_dict['state_dict'])
+
+    def save_indv(self, file_name):
+        path = "./model/" + file_name + ".pth"
+        torch.save({
+            'state_dict': self.model.state_dict(),
+            'input_size': self.input_size,
+            'hidden_layers': self.hidden_layers_range,
+            'hidden_size': self.hidden_size_range,
+            'output_size': self.output_size,
+            'fitness': self.fitness,
+        }, path)
+
+
     def evaluate(self):
-        #testa o modelo numa instância do game e retorna o score
-        self.game.reset()
-        done = False
-        while not done:
-            state_old = self.get_state(self.game)
-            final_move = self.get_action(state_old)
-            reward, done, score = self.game.play_step(final_move)
-        self.fitness = score
-        return score
+        fitness = 0
+        for i in range(10): #evaluate game in 10 games
+            #testa o modelo numa instância do game e retorna o score
+            self.game.reset()
+            done = False
+            while not done:
+                state_old = self.get_state(self.game)
+                final_move = self.get_action_trained(state_old)
+                reward, done, score = self.game.play_step(final_move)
+            fitness += score
+        self.fitness = fitness/10
+        return self.fitness
 
 
 
@@ -137,4 +162,12 @@ class Individual():
             prediction = self.model(state0)
             move = torch.argmax(prediction).item()
             final_move[move] = 1
+        return final_move
+
+    def get_action_trained(self, state):
+        state0 = torch.tensor(state, dtype=torch.float)
+        prediction = self.model(state0)
+        move = torch.argmax(prediction).item()
+        final_move = [0,0,0]
+        final_move[move] = 1
         return final_move
