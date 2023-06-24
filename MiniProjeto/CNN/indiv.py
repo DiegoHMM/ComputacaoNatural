@@ -13,22 +13,25 @@ BLOCK_SIZE = 20
 
 
 class Individual():
-    def __init__(self, input_size, n_hidden_layers, output_size, name):
+    def __init__(self, input_size, n_hidden_layers, output_size):
         self.input_size = input_size
         self.output_size = output_size
-        self.hidden_layers_range = n_hidden_layers+1
+        self.n_hidden_layers = n_hidden_layers+1
         self.fitness = 0
-        self.grammar = generate_hidden_layers(input_size, self.hidden_layers_range, output_size)
+        self.grammar = generate_hidden_layers(input_size, self.n_hidden_layers, output_size)
         self.model = build_network(self.grammar)
         self.game = SnakeGameAI()
         #
-        self.name = name
         self.n_games = 0
         self.epsilon = 0
         self.gamma = 0.9  # discount rate
         self.memory = deque(maxlen=MAX_MEMORY)  # popleft()
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
 
+    def set_grammar(self, grammar):
+        self.grammar = grammar
+    def build_model(self):
+        self.model = build_network(self.grammar)
     def train(self):
         plot_scores = []
         plot_mean_scores = []
@@ -51,7 +54,6 @@ class Individual():
 
                 if score > record:
                     record = score
-                    self.save_indv(self.name)
 
     #load model
     def load_indv(self,file_name):
@@ -165,3 +167,86 @@ class Individual():
         final_move = [0,0,0]
         final_move[move] = 1
         return final_move
+
+def point_crossover(individual_1, individual_2, max_hidden_layers=4, max_tries=100):
+    child_1 = Individual(individual_1.input_size, individual_1.n_hidden_layers, individual_1.output_size)
+    child_2 = Individual(individual_2.input_size, individual_2.n_hidden_layers, individual_2.output_size)
+    for i in range(max_tries):
+        #select random layer in individual_1 and get the index of the layer
+        layer_1 = random.choice(individual_1.grammar[1:-1])
+        index_1 = individual_1.grammar.index(layer_1)
+        #select random layer in individual_2
+        layer_2 = random.choice(individual_2.grammar[1:-1])
+        index_2 = individual_2.grammar.index(layer_2)
+
+        if get_activation_function(layer_1) != get_activation_function(layer_2):
+            #altere the layers dimensions
+            aux_in, aux_out = get_layer_dims(layer_1)
+            layer_2_in, layer_2_out = get_layer_dims(layer_2)
+            layer_1 = change_layer_dimensions(layer_1, layer_2_in, layer_2_out)
+            layer_2 = change_layer_dimensions(layer_2, aux_in, aux_out)
+            #swap the layers
+            child_1.grammar = individual_1.grammar.copy()
+            #put layer_2 in the index of layer_1
+            child_1.grammar[index_1] = layer_2
+            child_2.grammar = individual_2.grammar.copy()
+            #put layer_1 in the index of layer_2
+            child_2.grammar[index_2] = layer_1
+
+            return child_1, child_2
+        return individual_1, individual_2
+
+
+def delete_layer(indv_grammar, random_layer):
+    prev_layer = indv_grammar[indv_grammar.index(random_layer) - 1]
+    next_layer = indv_grammar[indv_grammar.index(random_layer) + 1]
+    # get dimensions of random_layer
+    in_dim, out_dim = get_layer_dims(random_layer)
+    # change dimensions of prev layer
+    new_prev_layer = change_layer_dimensions(prev_layer, get_layer_dims(prev_layer)[0], in_dim)
+    # change dimensions of next layer
+    new_next_layer = change_layer_dimensions(next_layer, in_dim, get_layer_dims(next_layer)[1])
+    # change layer of indv_grammar
+    indv_grammar[indv_grammar.index(random_layer) - 1] = new_prev_layer
+    indv_grammar[indv_grammar.index(random_layer) + 1] = new_next_layer
+    indv_grammar.remove(random_layer)
+    return indv_grammar
+
+
+def replace_n_layers(individual_grammar, random_layer):
+    in_dim, out_dim = get_layer_dims(random_layer)
+    max_layers = verify_length(individual_grammar)
+    if max_layers > 0:
+        amount_new_layers = random.randint(1, max_layers)
+        new_layers = generate_hidden_layers(in_dim, amount_new_layers, out_dim)
+        #inserir new_layers elements on place of random_layer
+        index = individual_grammar.index(random_layer)
+        individual_grammar.pop(index)
+        for layer in reversed(new_layers):
+            individual_grammar.insert(index, layer)
+        return individual_grammar
+def clone_layer(individual, random_layer):
+    random_index_layer = individual.index(random_layer)
+    _, out_dim = get_layer_dims(random_layer)
+    new_layer = change_layer_dimensions(random_layer, out_dim, out_dim)
+    individual.insert(random_index_layer + 1, new_layer)
+    return individual
+
+
+def mutate(individual):
+    new_individual = Individual(individual.input_size, individual.n_hidden_layers, individual.output_size)
+    new_individual.set_grammar(individual.grammar.copy())
+    random_layer = random.choice(individual.grammar[1:-1])
+    print("Random layer: ", random_layer)
+    if verify_length(new_individual.grammar) > 1: #qualquer operacao
+        new_grammar = replace_n_layers(new_individual.grammar, random_layer)
+        new_individual.grammar = new_grammar
+        new_individual.build_model()
+    # if verify_length(individual) > 0: #Nao pode deletar
+    #    new_individual = random.choice[replace_layer(individual, random_layer), clone_layer(individual, random_layer)]
+    # if verify_length(individual) > 1: #qualquer operacao
+    #    new_individual = random.choice[delete_layer(individual, random_layer), replace_layer(individual, random_layer), clone_layer(individual, random_layer)]
+    # else:
+    #    new_individual = delete_layer(individual, random_layer)
+
+    return new_individual
