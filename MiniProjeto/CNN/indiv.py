@@ -225,28 +225,25 @@ def replace_n_layers(individual_grammar, random_layer):
         for layer in reversed(new_layers):
             individual_grammar.insert(index, layer)
         return individual_grammar
-def clone_layer(individual, random_layer):
-    random_index_layer = individual.index(random_layer)
+def clone_layer(individual_grammar, random_layer):
+    random_index_layer = individual_grammar.index(random_layer)
     _, out_dim = get_layer_dims(random_layer)
     new_layer = change_layer_dimensions(random_layer, out_dim, out_dim)
-    individual.insert(random_index_layer + 1, new_layer)
-    return individual
+    individual_grammar.insert(random_index_layer + 1, new_layer)
+    return individual_grammar
 
 
 def mutate(individual):
     new_individual = Individual(individual.input_size, individual.n_hidden_layers, individual.output_size)
-    new_individual.set_grammar(individual.grammar.copy())
-    random_layer = random.choice(individual.grammar[1:-1])
-    print("Random layer: ", random_layer)
-    if verify_length(new_individual.grammar) > 1: #qualquer operacao
-        new_grammar = replace_n_layers(new_individual.grammar, random_layer)
-        new_individual.grammar = new_grammar
-        new_individual.build_model()
-    # if verify_length(individual) > 0: #Nao pode deletar
-    #    new_individual = random.choice[replace_layer(individual, random_layer), clone_layer(individual, random_layer)]
-    # if verify_length(individual) > 1: #qualquer operacao
-    #    new_individual = random.choice[delete_layer(individual, random_layer), replace_layer(individual, random_layer), clone_layer(individual, random_layer)]
-    # else:
-    #    new_individual = delete_layer(individual, random_layer)
+    individual_grammar = individual.grammar.copy()
+    random_layer = random.choice(individual_grammar[1:-1].copy())
+    if verify_length(individual_grammar) == 1: #Nao pode deletar
+        new_grammar = random.choice([replace_n_layers(individual_grammar.copy(), random_layer), clone_layer(individual_grammar.copy(), random_layer)])
+    elif verify_length(individual_grammar) == 2: #qualquer operacao
+        new_grammar = random.choice([delete_layer(individual_grammar.copy(), random_layer), replace_n_layers(individual_grammar.copy(), random_layer), clone_layer(individual_grammar.copy(), random_layer)])
+    else:
+        new_grammar = delete_layer(individual_grammar.copy(), random_layer)
 
+    new_individual.grammar = new_grammar
+    new_individual.build_model()
     return new_individual

@@ -10,7 +10,7 @@ import re
 #build population of 10 individuals 50% of the population with max hidden layers and 50% with random size
 GENERETAIONS = 10
 POPULATION_SIZE = 10
-N_HIDDEN_LAYERS = 2
+N_HIDDEN_LAYERS = 4
 INPUT_SIZE = 11
 OUTPUT_SIZE = 3
 CROSSOVER_RATE = 0.6
@@ -32,13 +32,7 @@ total_mut = 0
 
 
 #teste
-individual_1 = Individual(INPUT_SIZE, N_HIDDEN_LAYERS, OUTPUT_SIZE)
-child_1 = mutate(individual_1)
 
-print("Individual 1: ", individual_1.grammar)
-print("Child 1: ", child_1.grammar)
-
-'''
 #Start First Population
 population = []
 for i in range(POPULATION_SIZE):
@@ -126,4 +120,3 @@ for gen in range(GENERETAIONS):
     best_fitness_per_gen.append(best_fitness)
     mean_fitness_per_gen.append(mean_fitness)
     std_fitness_per_gen.append(std_fitness)
-'''
