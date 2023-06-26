@@ -5,12 +5,12 @@ import random
 
 
 GRAMMAR = [
-        ("Linear",),
+       # ("Linear",),
         ("Linear", "ReLU"),
         ("Linear", "Tanh"),
         ("Linear", "Sigmoid")
     ]
-AVAILABLE_SIZES = [64, 128, 256, 512]
+AVAILABLE_SIZES = [32, 64, 128, 256]
 
 
 def generate_hidden_layers(input_size, num_hidden_layers, output_size):
@@ -24,8 +24,8 @@ def generate_hidden_layers(input_size, num_hidden_layers, output_size):
         else:
             layer = (layer[0], hidden_size)
         hidden_layers.append(layer)
-
-    hidden_layers.append(('Linear', output_size))
+    layer = random.choice(GRAMMAR)
+    hidden_layers.append(('Linear', output_size, layer[1]))
 
     hidden_layers_str = [f"{layer[0]}({hidden_layers[i - 1][1]}, {layer[1]}){' ' + layer[2] if len(layer) > 2 else ''}"
                          for i, layer in enumerate(hidden_layers[1:], start=1)]
@@ -38,9 +38,9 @@ def build_network(layers):
         sizes = [int(s) for s in layer.split("(")[1].split(")")[0].split(",")]
         if "Linear" in layer_info:
             module_list.append(nn.Linear(*sizes))
-            if " " in layer_info:
-                activation_function = getattr(nn, layer_info.split(" ")[1])()
-                module_list.append(activation_function)
+        elif " " in layer_info:
+            activation_function = getattr(nn, layer_info.split(" ")[1])()
+            module_list.append(activation_function)
     return nn.Sequential(*module_list)
 
 
@@ -61,6 +61,21 @@ def get_activation_function(layer):
     if len(parts) > 1:
         return parts[1]
     else:
+        return ''
+
+def change_activation_function(layer, new_activation):
+    parts = layer.split(')')
+    if len(parts) > 1:
+        layer = layer.replace(parts[1].strip(), new_activation)
+    else:
+        layer = layer + ' ' + new_activation
+    return layer
+
+def get_activation_function(layer):
+    parts = layer.split(')')
+    if len(parts) > 1:
+        return parts[1].strip()
+    else:
         return None
 
 def verify_length(individual, max_length=6):
@@ -71,3 +86,7 @@ def tournament(population, tournament_size):
     tournament = random.sample(population, tournament_size)
     #return the best individual
     return max(tournament, key=lambda x: x.fitness)
+
+def train_individual(individual):
+    individual.train()
+    return individual

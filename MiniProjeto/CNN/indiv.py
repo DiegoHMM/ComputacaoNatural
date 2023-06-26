@@ -1,11 +1,15 @@
+from collections import deque
+from dinamic import *
+import random
+import copy
 import numpy as np
 import torch
 from grammar import *
 from game import SnakeGameAI, Direction, Point
-from model import QTrainer
-from collections import deque
-import random
-
+from model import QTrainer, Linear_QNet
+from helper import plot
+from dinamic import *
+#
 MAX_MEMORY = 100_000
 BATCH_SIZE = 1000
 LR = 0.001
@@ -19,7 +23,7 @@ class Individual():
         self.n_hidden_layers = n_hidden_layers+1
         self.fitness = 0
         self.grammar = generate_hidden_layers(input_size, self.n_hidden_layers, output_size)
-        self.model = build_network(self.grammar)
+        self.model = DynamicLinear_QNet(self.grammar)
         self.game = SnakeGameAI()
         #
         self.n_games = 0
@@ -31,17 +35,50 @@ class Individual():
     def set_grammar(self, grammar):
         self.grammar = grammar
     def build_model(self):
-        self.model = build_network(self.grammar)
+        self.model = DynamicLinear_QNet(self.grammar)
+
+    def get_last_actions(self):
+        last_actions = []
+        if len(self.memory) > 15:
+            for i in range(15):
+                last_actions.append(self.memory[-i][1])
+        return last_actions
+
+    def detect_cycles(self):
+        cycle1 = [[0, 1, 0], [0, 1, 0], [0, 1, 0]]
+        cycle2 = [[0, 0, 1], [0, 0, 1], [0, 0, 1]]
+
+        actions = self.get_last_actions()
+        if len(actions) >= 15:
+            cycle_length = 3  # define the length of the cycle you want to search for
+            max_cycle = 5
+            detected_cycle1 = 0
+            detected_cycle2 = 0
+            for i in range(len(actions) - cycle_length+1):
+                segment = actions[i:i + cycle_length]  # get a slice of the actions list
+                if segment == cycle1:
+                    detected_cycle1 += 1
+                elif segment == cycle2:
+                    detected_cycle2 += 1
+                if detected_cycle1 >= max_cycle or detected_cycle2 >= max_cycle:
+                    return True
+        return False
     def train(self):
         plot_scores = []
         plot_mean_scores = []
         total_score = 0
         record = 0
-        while self.n_games < 100: #run for 100 games
+
+        while self.n_games < 150: #run for 100 games
             state_old = self.get_state(self.game)
             final_move = self.get_action(state_old)
             reward, done, score = self.game.play_step(final_move)
             state_new = self.get_state(self.game)
+            #b_cycle = self.detect_cycles()
+            #if b_cycle:
+            #    print("Cycle detected")
+            #    done = True
+            #    reward = -10
             # Train short memory
             self.train_short_memory(state_old, final_move, reward, state_new, done)
             # Remember
@@ -55,13 +92,23 @@ class Individual():
                 if score > record:
                     record = score
 
+                #print('Game', self.n_games, 'Score', score, 'Record', record)
+
+
+                plot_scores.append(score)
+                total_score += score
+                mean_score = total_score / (self.n_games+1)
+                plot_mean_scores.append(mean_score)
+                plot(plot_scores, plot_mean_scores)
     #load model
     def load_indv(self,file_name):
         path = "./model/" + file_name + ".pth"
         # Load the checkpoint
-        model_dict = torch.load(path)
-        self.model = build_network(model_dict['grammar'])
-        self.model.load_state_dict(model_dict['state_dict'])
+        checkpoint = torch.load(path)
+        print(checkpoint['grammar'])
+        self.grammar = checkpoint['grammar']
+        self.model = DynamicLinear_QNet(self.grammar)
+        self.model.load_state_dict(checkpoint['state_dict'])
 
     def save_indv(self, file_name):
         path = "./model/" + file_name + ".pth"
@@ -168,33 +215,51 @@ class Individual():
         final_move[move] = 1
         return final_move
 
-def point_crossover(individual_1, individual_2, max_hidden_layers=4, max_tries=100):
+def point_crossover(individual_1, individual_2, max_hidden_layers=1, max_tries=100):
     child_1 = Individual(individual_1.input_size, individual_1.n_hidden_layers, individual_1.output_size)
     child_2 = Individual(individual_2.input_size, individual_2.n_hidden_layers, individual_2.output_size)
-    for i in range(max_tries):
-        #select random layer in individual_1 and get the index of the layer
-        layer_1 = random.choice(individual_1.grammar[1:-1])
-        index_1 = individual_1.grammar.index(layer_1)
-        #select random layer in individual_2
-        layer_2 = random.choice(individual_2.grammar[1:-1])
-        index_2 = individual_2.grammar.index(layer_2)
+    child_1.grammar = individual_1.grammar.copy()
+    child_2.grammar = individual_2.grammar.copy()
+    #Se existe pelo menos uma camada oculta
+    if len(individual_1.grammar[1:-1]) != 0 and len(individual_2.grammar[1:-1]) != 0:
+        for i in range(max_tries):
+            #select random layer in individual_1 and get the index of the layer
+            layer_1 = random.choice(individual_1.grammar[1:-1])
+            index_1 = individual_1.grammar.index(layer_1)
+            #select random layer in individual_2
+            layer_2 = random.choice(individual_2.grammar[1:-1])
+            index_2 = individual_2.grammar.index(layer_2)
 
-        if get_activation_function(layer_1) != get_activation_function(layer_2):
-            #altere the layers dimensions
-            aux_in, aux_out = get_layer_dims(layer_1)
-            layer_2_in, layer_2_out = get_layer_dims(layer_2)
-            layer_1 = change_layer_dimensions(layer_1, layer_2_in, layer_2_out)
-            layer_2 = change_layer_dimensions(layer_2, aux_in, aux_out)
-            #swap the layers
-            child_1.grammar = individual_1.grammar.copy()
-            #put layer_2 in the index of layer_1
-            child_1.grammar[index_1] = layer_2
-            child_2.grammar = individual_2.grammar.copy()
-            #put layer_1 in the index of layer_2
-            child_2.grammar[index_2] = layer_1
+            if get_activation_function(layer_1) != get_activation_function(layer_2):
+                #altere the layers dimensions
+                aux_in, aux_out = get_layer_dims(layer_1)
+                layer_2_in, layer_2_out = get_layer_dims(layer_2)
+                layer_1 = change_layer_dimensions(layer_1, layer_2_in, layer_2_out)
+                layer_2 = change_layer_dimensions(layer_2, aux_in, aux_out)
+                #swap the layers
+                child_1.grammar = individual_1.grammar.copy()
+                #put layer_2 in the index of layer_1
+                child_1.grammar[index_1] = layer_2
+                child_2.grammar = individual_2.grammar.copy()
+                #put layer_1 in the index of layer_2
+                child_2.grammar[index_2] = layer_1
 
+                return child_1, child_2
+            return individual_1, individual_2
+    else:
+        #50% de chance de trocar a primeira camada dos individuos
+        if random.random() < 0.5:
+            #select first layer of individual_1 and get the index of the layer
+            child_1.grammar[0] = change_activation_function(individual_1.grammar[0],get_activation_function(individual_2.grammar[0]))
+            child_2.grammar[0] = change_activation_function(individual_2.grammar[0],get_activation_function(individual_1.grammar[0]))
             return child_1, child_2
-        return individual_1, individual_2
+        else:
+            #select last layer of individual_1 and get the index of the layer
+            child_1.grammar[-1] = change_activation_function(individual_1.grammar[-1],get_activation_function(individual_2.grammar[-1]))
+            child_2.grammar[-1] = change_activation_function(individual_2.grammar[-1],get_activation_function(individual_1.grammar[-1]))
+            return child_1, child_2
+
+
 
 
 def delete_layer(indv_grammar, random_layer):
@@ -232,16 +297,24 @@ def clone_layer(individual_grammar, random_layer):
     individual_grammar.insert(random_index_layer + 1, new_layer)
     return individual_grammar
 
+#Only inidivuous without hidden layers
+def add_random_layer(individual_grammar):
+    _ , in_dim = get_layer_dims(individual_grammar[0])
+    out_dim, _ = get_layer_dims(individual_grammar[-1])
+    new_layer = generate_hidden_layers(in_dim, 0, out_dim)
+    individual_grammar.insert(1, new_layer[0])
+    return individual_grammar
 
 def mutate(individual):
     new_individual = Individual(individual.input_size, individual.n_hidden_layers, individual.output_size)
     individual_grammar = individual.grammar.copy()
-    random_layer = random.choice(individual_grammar[1:-1].copy())
-    if verify_length(individual_grammar) == 1: #Nao pode deletar
-        new_grammar = random.choice([replace_n_layers(individual_grammar.copy(), random_layer), clone_layer(individual_grammar.copy(), random_layer)])
-    elif verify_length(individual_grammar) == 2: #qualquer operacao
+    if len(individual_grammar) == 2: #Apenas adicionar uma layer
+        new_grammar = add_random_layer(individual_grammar.copy())
+    elif len(individual_grammar) == 3: #qualquer operacao
+        random_layer = random.choice(individual_grammar[1:-1].copy())
         new_grammar = random.choice([delete_layer(individual_grammar.copy(), random_layer), replace_n_layers(individual_grammar.copy(), random_layer), clone_layer(individual_grammar.copy(), random_layer)])
     else:
+        random_layer = random.choice(individual_grammar[1:-1].copy())
         new_grammar = delete_layer(individual_grammar.copy(), random_layer)
 
     new_individual.grammar = new_grammar

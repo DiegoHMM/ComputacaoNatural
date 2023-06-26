@@ -5,19 +5,18 @@ from collections import deque
 from game import SnakeGameAI, Direction, Point
 from model import Linear_QNet, QTrainer
 from helper import plot
-from genetic import RandomLinearQNet
 
 MAX_MEMORY = 100_000
 BATCH_SIZE = 1000
 LR = 0.001
 BLOCK_SIZE = 20
 class Agent:
-    def __init__(self, model):
+    def __init__(self):
         self.n_games = 0
         self.epsilon = 0
         self.gamma = 0.9 #discount rate
         self.memory = deque(maxlen=MAX_MEMORY) #popleft()
-        self.model = model #Linear_QNet(11, 256, 3)
+        self.model = Linear_QNet(11, 256, 3)
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
 
 
@@ -97,12 +96,12 @@ class Agent:
         return final_move
 
 def train():
+
     plot_scores = []
     plot_mean_scores = []
     total_score = 0
     record = 0
-    model = RandomLinearQNet(11, 3, (1, 2), (64, 512))
-    agent = Agent(model)
+    agent = Agent()
     game = SnakeGameAI()
     while True:
         state_old = agent.get_state(game)
