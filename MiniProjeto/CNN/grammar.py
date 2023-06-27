@@ -78,7 +78,7 @@ def get_activation_function(layer):
     else:
         return None
 
-def verify_length(individual, max_length=6):
+def verify_length(individual, max_length=4):
     return max_length - len(individual)
 
 def tournament(population, tournament_size):

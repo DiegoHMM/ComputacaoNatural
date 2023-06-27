@@ -100,9 +100,9 @@ class Individual():
                 mean_score = total_score / (self.n_games+1)
                 plot_mean_scores.append(mean_score)
                 plot(plot_scores, plot_mean_scores)
-    #load model
-    def load_indv(self,file_name):
-        path = "./model/" + file_name + ".pth"
+    #load seed_42
+    def load_indv(self, folder, file_name):
+        path = "./"+folder+"/" + file_name + ".pth"
         # Load the checkpoint
         checkpoint = torch.load(path)
         print(checkpoint['grammar'])
@@ -110,8 +110,8 @@ class Individual():
         self.model = DynamicLinear_QNet(self.grammar)
         self.model.load_state_dict(checkpoint['state_dict'])
 
-    def save_indv(self, file_name):
-        path = "./model/" + file_name + ".pth"
+    def save_indv(self, folder, file_name):
+        path = "./"+folder+"/" + file_name + ".pth"
         torch.save({
             'state_dict': self.model.state_dict(),
             'grammar': self.grammar,
