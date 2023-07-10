@@ -1,11 +1,11 @@
 # Mini Projeto de evolução de topologias de redes neurais
 
-# Algoritmo genético para evolução de rede neural totalmente conectada
+## Algoritmo genético para evolução de rede neural totalmente conectada
 
 Este projeto foca na implementação de um algoritmo genético para otimizar uma rede neural totalmente conectada.
 
 
-## Parâmetros:
+### Parâmetros:
 
 Os seguintes parâmetros foram utilizados durante o processo de otimização:
 
@@ -21,7 +21,7 @@ Os seguintes parâmetros foram utilizados durante o processo de otimização:
 | Etapas de treinamento  | 150  |
 
 
-## Resultados
+### Resultados
 
 Um conjunto de visualizações é fornecido abaixo para ajudar a entender o processo de treinamento e os resultados obtidos. Os primeiros dois GIFs mostram a evolução do treinamento da rede e a melhor rede neural obtida. A seguir, existem três gráficos que representam a média da fitness, o desvio padrão da fitness e o tamanho do indivíduo ao longo das gerações, respectivamente.
 
