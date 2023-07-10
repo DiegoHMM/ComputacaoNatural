@@ -1,6 +1,6 @@
 # Algoritmo genético para evolução de rede neural totalmente conectada
 
-This project focuses on implementing a genetic algorithm to optimize a fully connected neural network. 
+Este projeto foca na implementação de um algoritmo genético para otimizar uma rede neural totalmente conectada.
 
 
 ## Parâmetros:
